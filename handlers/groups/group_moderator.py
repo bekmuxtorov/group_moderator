@@ -5,6 +5,7 @@ from datetime import datetime as dt
 from aiogram.dispatcher.filters import Command
 from aiogram import types
 
+from data.config import ADMINS
 from filters.is_admin import IsAdmin
 from loader import dp, db, bot
 from filters import IsGroup
@@ -25,7 +26,6 @@ async def ban(message: types.Message):
 
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.LEFT_CHAT_MEMBER)
 async def ban(message: types.Message):
-    print("men delete qo'shilgan joydaman")
     await message.delete()
 
 
@@ -42,6 +42,7 @@ async def unban(message: types.Message):
         service_message = await  message.answer("⚡Bu user ban olmagan!")
         await asyncio.sleep(5)
         await bot.delete_message(chat_id, message_id=service_message.message_id)
+        await bot.delete_message(chat_id, message.message_id)
         return 
 
     await message.chat.unban(user_id=member_id, only_if_banned=True)
@@ -64,6 +65,8 @@ async def user_blocking(message: types.Message):
     message_id = message.message_id
     chat_id = message.chat.id
 
+    if user_id in [int(item) for item in ADMINS]:
+        return 
     await message.chat.kick(user_id=user_id)
     await bot.delete_message(chat_id, message_id)
     service_message = await message.answer(f"Foydalanuvchi {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhdan haydaldi.")

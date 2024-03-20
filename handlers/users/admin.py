@@ -23,7 +23,6 @@ async def add_write_link(message: types.Message):
 
 @dp.message_handler(IsPrivate(), IsBotAdmin(), text="🔗Linklarni ko'rish")
 async def show_write_link(message: types.Message):
-    print("link show")
     data = await db.select_all_write_links()
     text = "🔗Jo'natish mumkin bo'lgan linklar:\n\nid | link -> kim qo'shgan\n"
     for item in data:
@@ -112,6 +111,6 @@ async def add_admin(message: types.Message, state: FSMContext):
         return 
     
     add_admin_id(telegram_id=message.text)
+    await db.add_admin(telegram_id=int(message.text), full_name=message.from_user.full_name, created_at=dt.now())
     await message.answer("✅ Admin qo'shildi.")
     await state.finish()
-    print(f"add_admin:{ADMINS}")

@@ -60,6 +60,16 @@ class Database:
         """
         await self.execute(sql, execute=True)
 
+    async def create_admins(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS admins(
+            telegram_id BIGINT NOT NULL UNIQUE,
+            full_name VARCHAR(255) NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW() 
+        )
+        """
+        await self.execute(sql, execute=True)
+
     @staticmethod
     def format_args(sql, parameters: dict):
         sql += " AND ".join([
@@ -67,6 +77,21 @@ class Database:
                                                           start=1)
         ])
         return sql, tuple(parameters.values())
+
+    async def add_admin(self, telegram_id, full_name, created_at):
+        sql = "INSERT INTO admins (telegram_id, full_name, created_at) VALUES($1, $2, $3) returning *"
+        return await self.execute(sql, telegram_id, full_name, created_at, fetchrow=True)
+        
+    async def select_all_admin(self):
+        sql = "SELECT * FROM admins"
+        data = await self.execute(sql, fetch=True)
+        return [
+            {
+                "telegram_id": item[0],
+                "full_name": item[1],
+                "created_at": item[2]
+            } for item in data
+        ] if data else []
 
     async def add_write_link_list(self, link, added_by, created_at):
         sql = "INSERT INTO write_link_list (link, added_by, created_at) VALUES($1, $2, $3) returning *"
