@@ -18,6 +18,7 @@ REGEXS = [r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+|www\.\S+', r'@\w+', r'https?
 async def ban(message: types.Message):
     text = f"""Assalomu alaykum {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>].\n<b>Himmat 700+</b> loyihasining muhokama guruhiga xush kelibsiz!"""
     service_message = await message.answer(text)
+    await asyncio.sleep(9)
     await bot.delete_message(chat_id=message.chat.id, message_id=service_message.message_id)
     await message.delete()
 
