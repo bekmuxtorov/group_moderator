@@ -13,6 +13,21 @@ MAX_ATTEMPT_FOR_BLOCK = 2
 
 REGEXS = [r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+|www\.\S+', r'@\w+', r'https?:\/\/t\.me\/\+?[\w-]+']
 
+
+@dp.message_handler(IsGroup(), content_types=types.ContentTypes.NEW_CHAT_MEMBERS)
+async def ban(message: types.Message):
+    text = f"""Assalomu alaykum {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>].\n<b>Himmat 700+</b> loyihasining muhokama guruhiga xush kelibsiz!"""
+    service_message = await message.answer(text)
+    await bot.delete_message(chat_id=message.chat.id, message_id=service_message.message_id)
+    await message.delete()
+
+
+@dp.message_handler(IsGroup(), content_types=types.ContentTypes.LEFT_CHAT_MEMBER)
+async def ban(message: types.Message):
+    print("men delete qo'shilgan joydaman")
+    await message.delete()
+
+
 @dp.message_handler(IsGroup(), Command("unban", prefixes="!/"), IsAdmin())
 async def unban(message: types.Message):
     command_parse = re.match(r'^\/unban\s+(\d+)$', message.text)
