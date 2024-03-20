@@ -1,10 +1,11 @@
-from filters.is_admin import IsAdmin
-from aiogram.dispatcher.filters import Command
 import re
 import asyncio
 from datetime import datetime as dt
+
+from aiogram.dispatcher.filters import Command
 from aiogram import types
 
+from filters.is_admin import IsAdmin
 from loader import dp, db, bot
 from filters import IsGroup
 
@@ -14,17 +15,16 @@ REGEXS = [r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+|www\.\S+', r'@\w+', r'https?
 
 @dp.message_handler(IsGroup(), Command("unban", prefixes="!/"), IsAdmin())
 async def unban(message: types.Message):
-    print("unban")
     command_parse = re.match(r'^\/unban\s+(\d+)$', message.text)
     if not command_parse:
         return     
 
     member_id = int((message.text).split(' ')[1])
     chat_id = message.chat.id
-    print(member_id)
     block_user = await db.select_black_user(telegram_id=member_id)
     if not block_user:
         service_message = await  message.answer("⚡Bu user ban olmagan!")
+        await asyncio.sleep(5)
         await bot.delete_message(chat_id, message_id=service_message.message_id)
         return 
 
@@ -38,10 +38,8 @@ async def unban(message: types.Message):
 
 async def get_urls(text: str):
     urls = []
-    print("get_urls")
     for regex in REGEXS:
         urls += re.findall(regex, text)
-    print(f"get_urls: {urls}")
     return urls
 
 
@@ -62,10 +60,8 @@ async def user_blocking(message: types.Message):
 async def ban(message: types.Message):
     if message.content_type in types.ContentTypes.PHOTO or \
     message.content_type in types.ContentTypes.VIDEO or \
-    message.content_type in types.ContentTypes.AUDIO:
-        text = message.html_text if message.html_text else message.md_text
-    
-    elif message.content_type in types.ContentTypes.TEXT:
+    message.content_type in types.ContentTypes.AUDIO or \
+    message.content_type in types.ContentTypes.TEXT: 
         text = message.html_text if message.html_text else message.md_text
     
     else:
@@ -81,11 +77,9 @@ async def ban(message: types.Message):
     
     write_link_list = await db.select_all_write_links()
     urls = set(urls)
-    print(urls)
     if 'https://t.me' in urls:
         urls.remove('https://t.me')
     write_links = {item.get("link") for item in write_link_list if write_link_list}
-
 
     status = urls.issubset(write_links) 
     if status:
