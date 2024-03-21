@@ -26,7 +26,7 @@ async def show_write_link(message: types.Message):
     data = await db.select_all_write_links()
     text = "🔗Jo'natish mumkin bo'lgan linklar:\n\nid | link -> kim qo'shgan\n"
     for item in data:
-        text += f"{item.get('id')} | {item.get('link')} -> {item.get('added_by')}\n"
+        text += f"<code>{item.get('id')}</code> | {item.get('link')} -> {item.get('added_by')}\n"
     await message.answer(text)
 
 
@@ -35,7 +35,7 @@ async def show_block_user(message: types.Message):
     data = await db.select_all_black_user_list()
     text = 'Ban qilingan userlar:\n\n№| telegram id -> full name\n\n'
     for ind, item in enumerate(data):
-        text += f"{ind+1}| {item.get('telegram_id')} -> {item.get('full_name')}\n"
+        text += f"{ind+1}| <code>{item.get('telegram_id')}</code> -> {item.get('full_name')}\n"
     await message.answer(text)
 
 
@@ -111,6 +111,9 @@ async def add_admin(message: types.Message, state: FSMContext):
         return 
     
     add_admin_id(telegram_id=message.text)
-    await db.add_admin(telegram_id=int(message.text), full_name=message.from_user.full_name, created_at=dt.now())
+    try:
+        await db.add_admin(telegram_id=int(message.text), full_name=message.from_user.full_name, created_at=dt.now())
+    except:
+        pass
     await message.answer("✅ Admin qo'shildi.")
     await state.finish()
