@@ -10,9 +10,16 @@ from filters.is_admin import IsAdmin
 from loader import dp, db, bot
 from filters import IsGroup
 
-MAX_ATTEMPT_FOR_BLOCK = 2
+MAX_ATTEMPT_FOR_BLOCK = 20
 
-REGEXS = [r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+|www\.\S+', r'@\w+', r'https?:\/\/t\.me\/\+?[\w-]+']
+REGEXS = [
+    r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+|www\.\S+', 
+    r'@\w+', r'https?:\/\/t\.me\/\+?[\w-]+', 
+    r'https?:\/\/www\.instagram\.com\/[\w-]+',
+    r'https?:\/\/www\.facebook\.com\/[\w-]+',
+    r'https?:\/\/youtube\.com\/@[\w-]+',
+    r'https?:\/\/ummalife\.com\/[\w-]+',
+    ]
 
 
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.NEW_CHAT_MEMBERS)
@@ -96,8 +103,12 @@ async def ban(message: types.Message):
     
     write_link_list = await db.select_all_write_links()
     urls = set(urls)
-    if 'https://t.me' in urls:
-        urls.remove('https://t.me')
+    if 'https://t.me' in urls: urls.remove('https://t.me')
+    if 'https://www.instagram.com' in urls: urls.remove('https://www.instagram.com')
+    if 'https://www.facebook.com' in urls: urls.remove('https://www.facebook.com')
+    if 'https://youtube.com' in urls: urls.remove('https://youtube.com')
+    if 'https://ummalife.com' in urls: urls.remove('https://ummalife.com')
+    
     write_links = {item.get("link") for item in write_link_list if write_link_list}
 
     status = urls.issubset(write_links) 
