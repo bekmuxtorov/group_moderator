@@ -10,7 +10,7 @@ from filters.is_admin import IsAdmin
 from loader import dp, db, bot
 from filters import IsGroup
 
-MAX_ATTEMPT_FOR_BLOCK = 20
+MAX_ATTEMPT_FOR_BLOCK = 2
 
 REGEXS = [
     r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+|www\.\S+', 
