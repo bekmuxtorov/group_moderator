@@ -1,34 +1,57 @@
 import re
+import datetime
 import asyncio
 from datetime import datetime as dt
 
 from aiogram.dispatcher.filters import Command
 from aiogram import types
+from aiogram.utils.exceptions import BadRequest
 
-from data.config import ADMINS
 from filters.is_admin import IsAdmin
 from loader import dp, db, bot
 from filters import IsGroup
+from data.config import MAX_ATTEMPT_FOR_BLOCK, COUNT_FOR_READ_ONLY, UNTIL_DATE, ADMINS
+from utils.moderator_utils import get_urls
+ 
+async def user_read_only(message:types.Message):
+    member_id = message.from_user.id
+    message_id = message.message_id
+    chat_id = message.chat.id
+    until_date = datetime.datetime.now() + datetime.timedelta(minutes=UNTIL_DATE)
+    try:
+        await message.chat.restrict(user_id=member_id, can_send_messages=False, until_date=until_date)
+        service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {COUNT_FOR_READ_ONLY}/{COUNT_FOR_READ_ONLY} ogohlantirishga egasiz va {UNTIL_DATE} minut guruhga yoza olmaysiz, keyingi safar guruhdan haydalasiz. Extiyot bo'ling!")
+        await bot.delete_message(chat_id=chat_id, message_id=message_id)
+        await asyncio.sleep(6)
+        await bot.delete_message(chat_id=chat_id, message_id=service_message.message_id)
 
-MAX_ATTEMPT_FOR_BLOCK = 2
+    except BadRequest as err:
+        await message.answer(f"Xatolik! {err.args}")
+        return
 
-REGEXS = [
-    r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+|www\.\S+', 
-    r'@\w+', r'https?:\/\/t\.me\/\+?[\w-]+', 
-    r'https?:\/\/www\.instagram\.com\/[\w-]+',
-    r'https?:\/\/www\.facebook\.com\/[\w-]+',
-    r'https?:\/\/youtube\.com\/@[\w-]+',
-    r'https?:\/\/ummalife\.com\/[\w-]+',
-    ]
+async def user_blocking(message: types.Message):
+    user_id = message.from_user.id
+    message_id = message.message_id
+    chat_id = message.chat.id
+
+    if user_id in [int(item) for item in ADMINS]:
+        await bot.delete_message(chat_id, message_id)
+        return 
+
+    await message.chat.kick(user_id=user_id)
+    await bot.delete_message(chat_id, message_id)
+    service_message = await message.answer(f"Foydalanuvchi {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhdan haydaldi.")
+    await asyncio.sleep(5)
+    await bot.delete_message(chat_id, service_message.message_id)
 
 
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.NEW_CHAT_MEMBERS)
 async def ban(message: types.Message):
+    await message.delete()
     text = f"""Assalomu alaykum {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>].\n<b>Himmat 700+</b> loyihasining muhokama guruhiga xush kelibsiz!"""
     service_message = await message.answer(text)
-    await asyncio.sleep(9)
+    await asyncio.sleep(6)
     await bot.delete_message(chat_id=message.chat.id, message_id=service_message.message_id)
-    await message.delete()
 
 
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.LEFT_CHAT_MEMBER)
@@ -47,48 +70,25 @@ async def unban(message: types.Message):
     block_user = await db.select_black_user(telegram_id=member_id)
     if not block_user:
         service_message = await  message.answer("⚡Bu user ban olmagan!")
+        await bot.delete_message(chat_id, message.message_id)
         await asyncio.sleep(5)
         await bot.delete_message(chat_id, message_id=service_message.message_id)
-        await bot.delete_message(chat_id, message.message_id)
         return 
 
     await message.chat.unban(user_id=member_id, only_if_banned=True)
     await db.delete_black_user(telegram_id=member_id)
     service_message = await message.answer(f"Foydalanuvchi {block_user.get('full_name')} bandan chiqarildi!")
+    await bot.delete_message(chat_id, message.message_id)
     await asyncio.sleep(6)
     await bot.delete_message(chat_id, service_message.message_id)
-    await bot.delete_message(chat_id, message.message_id)
-
-
-async def get_urls(text: str):
-    urls = []
-    for regex in REGEXS:
-        urls += re.findall(regex, text)
-    print(f"urls {urls}")
-    return urls
-
-
-async def user_blocking(message: types.Message):
-    user_id = message.from_user.id
-    message_id = message.message_id
-    chat_id = message.chat.id
-
-    if user_id in [int(item) for item in ADMINS]:
-        return 
-    await message.chat.kick(user_id=user_id)
-    await bot.delete_message(chat_id, message_id)
-    service_message = await message.answer(f"Foydalanuvchi {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhdan haydaldi.")
-    await asyncio.sleep(5)
-    await bot.delete_message(chat_id, service_message.message_id)
-    return
 
 
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.ANY)
 async def ban(message: types.Message):
-    if message.content_type in types.ContentTypes.PHOTO or \
+    if (message.content_type in types.ContentTypes.PHOTO or \
     message.content_type in types.ContentTypes.VIDEO or \
     message.content_type in types.ContentTypes.AUDIO or \
-    message.content_type in types.ContentTypes.TEXT: 
+    message.content_type in types.ContentTypes.TEXT) and (message.html_text or message.md_text): 
         text = message.html_text if message.html_text else message.md_text
     
     else:
@@ -111,14 +111,19 @@ async def ban(message: types.Message):
     if 'https://ummalife.com' in urls: urls.remove('https://ummalife.com')
     
     write_links = {item.get("link") for item in write_link_list if write_link_list}
+    print('='*9)
     print(f'write_link_list: {write_links}')
     print(f'urls: {urls}')
+    print('='*9)
 
     status = urls.intersection(write_links)
+    print(status)
+    print(bool(status))
     # status = urls.issubset(write_links) 
     if status:
         return 
 
+    print("add block ga yaqin")
     black_user = await db.select_black_user(telegram_id=user_id)
     if not black_user:
         now_date = dt.now()
@@ -131,13 +136,18 @@ async def ban(message: types.Message):
         count = 1
     else:
         await db.update_black_user_count(telegram_id=user_id)
-        count = black_user.get("count") + 1    
+        count = black_user.get("count") + 1  
+
+    if count == COUNT_FOR_READ_ONLY:
+        await user_read_only(message)
+        return 
 
     if count >= MAX_ATTEMPT_FOR_BLOCK:
         await user_blocking(message)
         return
     
-    service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {count}/{MAX_ATTEMPT_FOR_BLOCK} ogohlantirishga egasiz, ehtiyot bo'ling!")
+    print("add block ga oldida")
     await bot.delete_message(chat_id, message_id)
+    service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {count}/{MAX_ATTEMPT_FOR_BLOCK} ogohlantirishga egasiz, ehtiyot bo'ling!")
     await asyncio.sleep(6)
     await bot.delete_message(chat_id, service_message.message_id)
