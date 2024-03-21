@@ -13,17 +13,16 @@ from filters import IsGroup
 from data.config import MAX_ATTEMPT_FOR_BLOCK, COUNT_FOR_READ_ONLY, UNTIL_DATE, ADMINS
 from utils.moderator_utils import get_urls
  
+
 async def user_read_only(message:types.Message):
     member_id = message.from_user.id
-    message_id = message.message_id
-    chat_id = message.chat.id
     until_date = datetime.datetime.now() + datetime.timedelta(minutes=UNTIL_DATE)
     try:
         await message.chat.restrict(user_id=member_id, can_send_messages=False, until_date=until_date)
         service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {COUNT_FOR_READ_ONLY}/{COUNT_FOR_READ_ONLY} ogohlantirishga egasiz va {UNTIL_DATE} daqiqa guruhga yoza olmaysiz, keyingi safar guruhdan haydalasiz. Extiyot bo'ling!")
-        await bot.delete_message(chat_id=chat_id, message_id=message_id)
+        await message.delete()
         await asyncio.sleep(6)
-        await bot.delete_message(chat_id=chat_id, message_id=service_message.message_id)
+        await service_message.delete()
 
     except BadRequest as err:
         await message.answer(f"Xatolik! {err.args}")
@@ -31,18 +30,69 @@ async def user_read_only(message:types.Message):
 
 async def user_blocking(message: types.Message):
     user_id = message.from_user.id
-    message_id = message.message_id
-    chat_id = message.chat.id
 
     if user_id in [int(item) for item in ADMINS]:
-        await bot.delete_message(chat_id, message_id)
+        await message.delete()
         return 
 
     await message.chat.kick(user_id=user_id)
-    await bot.delete_message(chat_id, message_id)
+    await message.delete()
     service_message = await message.answer(f"Foydalanuvchi {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhdan haydaldi.")
     await asyncio.sleep(5)
-    await bot.delete_message(chat_id, service_message.message_id)
+    await service_message.delete()
+
+
+
+# /ro oki !ro (read-only) komandalari uchun handler
+# foydalanuvchini read-only ya'ni faqat o'qish rejimiga o'tkazib qo'yamiz.
+@dp.message_handler(IsGroup(), Command("ro", prefixes="!/"), IsAdmin())
+async def read_only_mode(message: types.Message):
+    member = message.reply_to_message.from_user
+    member_id = member.id
+    command_parse = re.compile(r"(!ro|/ro) ?(\d+)? ?([\w+\D]+)?")
+    parsed = command_parse.match(message.text)
+    time = parsed.group(2)
+    comment = parsed.group(3)
+    if not time:
+        time = 5
+
+    """
+    !ro 
+    !ro 5 
+    !ro 5 test
+    !ro test
+    !ro test test test
+    /ro 
+    /ro 5 
+    /ro 5 test
+    /ro test
+    """
+    # 5-minutga izohsiz cheklash
+    # !ro 5
+    # command='!ro' time='5' comment=[]
+
+    # 50 minutga izoh bilan cheklash
+    # !ro 50 reklama uchun ban
+    # command='!ro' time='50' comment=['reklama', 'uchun', 'ban']
+
+    time = int(time)
+
+    # Ban vaqtini hisoblaymiz (hozirgi vaqt + n minut)
+    until_date = datetime.datetime.now() + datetime.timedelta(minutes=time)
+
+    try:
+        await message.chat.restrict(user_id=member_id, can_send_messages=False, until_date=until_date)
+        await message.reply_to_message.delete()
+    except BadRequest as err:
+        await message.answer(f"Xatolik! {err.args}")
+        return
+
+    service_message = await message.answer(f"Xurmatli {message.reply_to_message.from_user.full_name}[<a href=\'tg://user?id={message.reply_to_message.from_user.id}\'>{message.reply_to_message.from_user.id}</a>] {time} daqiqa yozish huquqidan mahrum qilindingiz.\n"
+                         f"Sabab: \n<b>{comment}</b>")
+
+    await asyncio.sleep(5)
+    await message.delete()
+    await service_message.delete()
 
 
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.NEW_CHAT_MEMBERS)
@@ -51,8 +101,7 @@ async def ban(message: types.Message):
     text = f"""Assalomu alaykum {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>].\n<b>Himmat 700+</b> loyihasining muhokama guruhiga xush kelibsiz!"""
     service_message = await message.answer(text)
     await asyncio.sleep(6)
-    await bot.delete_message(chat_id=message.chat.id, message_id=service_message.message_id)
-
+    await service_message.delete()
 
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.LEFT_CHAT_MEMBER)
 async def ban(message: types.Message):
@@ -66,21 +115,20 @@ async def unban(message: types.Message):
         return     
 
     member_id = int((message.text).split(' ')[1])
-    chat_id = message.chat.id
     block_user = await db.select_black_user(telegram_id=member_id)
     if not block_user:
         service_message = await  message.answer("⚡Bu user ban olmagan!")
-        await bot.delete_message(chat_id, message.message_id)
+        await message.delete()
         await asyncio.sleep(5)
-        await bot.delete_message(chat_id, message_id=service_message.message_id)
+        await service_message.delete()
         return 
 
     await message.chat.unban(user_id=member_id, only_if_banned=True)
     await db.delete_black_user(telegram_id=member_id)
     service_message = await message.answer(f"Foydalanuvchi {block_user.get('full_name')} bandan chiqarildi!")
-    await bot.delete_message(chat_id, message.message_id)
+    await message.delete()
     await asyncio.sleep(6)
-    await bot.delete_message(chat_id, service_message.message_id)
+    await service_message.delete()
 
 
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.ANY)
@@ -94,9 +142,7 @@ async def ban(message: types.Message):
     else:
         return
 
-    message_id = message.message_id
     user_id = message.from_user.id
-    chat_id = message.chat.id
     urls = await get_urls(text)
 
     if not urls:
@@ -147,10 +193,10 @@ async def ban(message: types.Message):
         return
     
     print("add block ga oldida")
-    await bot.delete_message(chat_id, message_id)
+    await message.delete()
     if count + 1 == MAX_ATTEMPT_FOR_BLOCK:
         service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {count}/{MAX_ATTEMPT_FOR_BLOCK} ogohlantirishga egasiz.\n\nKeyingi safar guruhdan hayalasiz. Ehtiyot bo'ling!")
     else: 
         service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {count}/{MAX_ATTEMPT_FOR_BLOCK} ogohlantirishga egasiz, ehtiyot bo'ling!")
     await asyncio.sleep(6)
-    await bot.delete_message(chat_id, service_message.message_id)
+    await service_message.delete()
