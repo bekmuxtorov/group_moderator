@@ -64,6 +64,7 @@ async def get_urls(text: str):
     urls = []
     for regex in REGEXS:
         urls += re.findall(regex, text)
+    print(f"urls {urls}")
     return urls
 
 
@@ -110,8 +111,11 @@ async def ban(message: types.Message):
     if 'https://ummalife.com' in urls: urls.remove('https://ummalife.com')
     
     write_links = {item.get("link") for item in write_link_list if write_link_list}
+    print(f'write_link_list: {write_links}')
+    print(f'urls: {urls}')
 
-    status = urls.issubset(write_links) 
+    status = urls.intersection(write_links)
+    # status = urls.issubset(write_links) 
     if status:
         return 
 
