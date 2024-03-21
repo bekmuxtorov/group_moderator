@@ -30,11 +30,6 @@ async def user_read_only(message:types.Message):
 
 async def user_blocking(message: types.Message):
     user_id = message.from_user.id
-
-    if user_id in [int(item) for item in ADMINS]:
-        await message.delete()
-        return 
-
     await message.chat.kick(user_id=user_id)
     await message.delete()
     service_message = await message.answer(f"Foydalanuvchi {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhdan haydaldi.")
@@ -133,6 +128,11 @@ async def unban(message: types.Message):
 
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.ANY)
 async def ban(message: types.Message):
+    member = await message.chat.get_member(message.from_user.id)
+    if member.is_chat_admin(): return 
+
+    if message.from_user.id in [int(item) for item in ADMINS]: return
+    
     if (message.content_type in types.ContentTypes.PHOTO or \
     message.content_type in types.ContentTypes.VIDEO or \
     message.content_type in types.ContentTypes.AUDIO or \
