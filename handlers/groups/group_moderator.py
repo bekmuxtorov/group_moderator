@@ -20,7 +20,7 @@ async def user_read_only(message:types.Message):
     until_date = datetime.datetime.now() + datetime.timedelta(minutes=UNTIL_DATE)
     try:
         await message.chat.restrict(user_id=member_id, can_send_messages=False, until_date=until_date)
-        service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {COUNT_FOR_READ_ONLY}/{COUNT_FOR_READ_ONLY} ogohlantirishga egasiz va {UNTIL_DATE} minut guruhga yoza olmaysiz, keyingi safar guruhdan haydalasiz. Extiyot bo'ling!")
+        service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {COUNT_FOR_READ_ONLY}/{COUNT_FOR_READ_ONLY} ogohlantirishga egasiz va {UNTIL_DATE} daqiqa guruhga yoza olmaysiz, keyingi safar guruhdan haydalasiz. Extiyot bo'ling!")
         await bot.delete_message(chat_id=chat_id, message_id=message_id)
         await asyncio.sleep(6)
         await bot.delete_message(chat_id=chat_id, message_id=service_message.message_id)
@@ -148,6 +148,9 @@ async def ban(message: types.Message):
     
     print("add block ga oldida")
     await bot.delete_message(chat_id, message_id)
-    service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {count}/{MAX_ATTEMPT_FOR_BLOCK} ogohlantirishga egasiz, ehtiyot bo'ling!")
+    if count + 1 == MAX_ATTEMPT_FOR_BLOCK:
+        service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {count}/{MAX_ATTEMPT_FOR_BLOCK} ogohlantirishga egasiz.\n\nKeyingi safar guruhdan hayalasiz. Ehtiyot bo'ling!")
+    else: 
+        service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {count}/{MAX_ATTEMPT_FOR_BLOCK} ogohlantirishga egasiz, ehtiyot bo'ling!")
     await asyncio.sleep(6)
     await bot.delete_message(chat_id, service_message.message_id)
