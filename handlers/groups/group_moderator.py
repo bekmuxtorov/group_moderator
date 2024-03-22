@@ -5,13 +5,13 @@ from datetime import datetime as dt
 
 from aiogram.dispatcher.filters import Command
 from aiogram import types
-from aiogram.utils.exceptions import BadRequest
+from aiogram.utils.exceptions import BadRequest, MessageCantBeDeleted
 
 from filters.is_admin import IsAdmin
-from loader import dp, db, bot
+from loader import dp, db
 from filters import IsGroup
 from data.config import MAX_ATTEMPT_FOR_BLOCK, COUNT_FOR_READ_ONLY, UNTIL_DATE, ADMINS
-from utils.moderator_utils import get_urls
+from utils.moderator_utils import get_urls, delete_some_link
  
 
 async def user_read_only(message:types.Message):
@@ -126,22 +126,18 @@ async def unban(message: types.Message):
     await service_message.delete()
 
 
-@dp.message_handler(IsGroup(), content_types=types.ContentTypes.ANY)
+@dp.message_handler(IsGroup(), content_types=types.ContentTypes.TEXT)
+@dp.message_handler(IsGroup(), content_types=types.ContentTypes.AUDIO)
+@dp.message_handler(IsGroup(), content_types=types.ContentTypes.VIDEO)
+@dp.message_handler(IsGroup(), content_types=types.ContentTypes.PHOTO)
+@dp.message_handler(IsGroup(), content_types=types.ContentTypes.DOCUMENT)
 async def ban(message: types.Message):
     member = await message.chat.get_member(message.from_user.id)
     if member.is_chat_admin(): return 
 
     if message.from_user.id in [int(item) for item in ADMINS]: return
     
-    if (message.content_type in types.ContentTypes.PHOTO or \
-    message.content_type in types.ContentTypes.VIDEO or \
-    message.content_type in types.ContentTypes.AUDIO or \
-    message.content_type in types.ContentTypes.TEXT) and (message.html_text or message.md_text): 
-        text = message.html_text if message.html_text else message.md_text
-    
-    else:
-        return
-
+    text = message.html_text if message.html_text else message.md_text
     user_id = message.from_user.id
     urls = await get_urls(text)
 
@@ -150,12 +146,8 @@ async def ban(message: types.Message):
     
     write_link_list = await db.select_all_write_links()
     urls = set(urls)
-    if 'https://t.me' in urls: urls.remove('https://t.me')
-    if 'https://www.instagram.com' in urls: urls.remove('https://www.instagram.com')
-    if 'https://www.facebook.com' in urls: urls.remove('https://www.facebook.com')
-    if 'https://youtube.com' in urls: urls.remove('https://youtube.com')
-    if 'https://ummalife.com' in urls: urls.remove('https://ummalife.com')
-    
+    urls = await delete_some_link(urls)
+
     write_links = {item.get("link") for item in write_link_list if write_link_list}
     print('='*9)
     print(f'write_link_list: {write_links}')
@@ -191,9 +183,12 @@ async def ban(message: types.Message):
     if count >= MAX_ATTEMPT_FOR_BLOCK:
         await user_blocking(message)
         return
-    
     print("add block ga oldida")
-    await message.delete()
+    try:
+        await message.delete()
+    except MessageCantBeDeleted as err:
+        pass
+
     if count + 1 == MAX_ATTEMPT_FOR_BLOCK:
         service_message = await message.answer(text=f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz {count}/{MAX_ATTEMPT_FOR_BLOCK} ogohlantirishga egasiz.\n\nKeyingi safar guruhdan hayalasiz. Ehtiyot bo'ling!")
     else: 
