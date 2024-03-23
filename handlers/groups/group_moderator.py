@@ -8,7 +8,7 @@ from aiogram import types
 from aiogram.utils.exceptions import BadRequest, MessageCantBeDeleted
 
 from filters.is_admin import IsAdmin
-from loader import dp, db
+from loader import dp, db, bot
 from filters import IsGroup
 from data.config import MAX_ATTEMPT_FOR_BLOCK, COUNT_FOR_READ_ONLY, UNTIL_DATE, ADMINS
 from utils.moderator_utils import get_urls, delete_some_link
@@ -102,7 +102,6 @@ async def ban(message: types.Message):
 async def ban(message: types.Message):
     await message.delete()
 
-
 @dp.message_handler(IsGroup(), Command("unban", prefixes="!/"), IsAdmin())
 async def unban(message: types.Message):
     command_parse = re.match(r'^\/unban\s+(\d+)$', message.text)
@@ -111,19 +110,20 @@ async def unban(message: types.Message):
 
     member_id = int((message.text).split(' ')[1])
     block_user = await db.select_black_user(telegram_id=member_id)
-    if not block_user:
-        service_message = await  message.answer("⚡Bu user ban olmagan!")
+    chat_member = await bot.get_chat_member(chat_id=message.chat.id, user_id=member_id)
+    if chat_member.status == "kicked":
+        await bot.unban_chat_member(chat_id=message.chat.id, user_id=member_id)
+        await db.delete_black_user(telegram_id=member_id)
+        service_message = await message.answer(f"Foydalanuvchi {block_user.get('full_name')}[{block_user.get('telegram_id')}] bandan chiqarildi!")
+        await message.delete()
+        await asyncio.sleep(6)
+        await service_message.delete()
+    else:        
+        chat_name = message.chat.full_name
+        service_message = await  message.answer(f"⚡Foydalanuvchi <b>{chat_name}</b> guruhida ban olmagan!")
         await message.delete()
         await asyncio.sleep(5)
         await service_message.delete()
-        return 
-
-    await message.chat.unban(user_id=member_id, only_if_banned=True)
-    await db.delete_black_user(telegram_id=member_id)
-    service_message = await message.answer(f"Foydalanuvchi {block_user.get('full_name')} bandan chiqarildi!")
-    await message.delete()
-    await asyncio.sleep(6)
-    await service_message.delete()
 
 
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.TEXT)
