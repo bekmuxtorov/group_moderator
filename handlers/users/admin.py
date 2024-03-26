@@ -100,11 +100,6 @@ async def add_admin(message: types.Message):
 
 @dp.message_handler(IsPrivate(), IsBotAdmin(), state=AddAdmin.admin_id)
 async def add_admin(message: types.Message, state: FSMContext):
-    # is_forward = message.is_forward()
-    # if is_forward:
-    #     user = message.from_user.id
-    #     print(user)
-    # print(ADMINS)
     if not (message.text).isdigit():
         await message.answer("❌ Yuborishda xatolik!")
         await state.finish()
