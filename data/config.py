@@ -7,6 +7,8 @@ BOT_TOKEN = env.str("BOT_TOKEN")
 ADMINS = env.list("ADMINS")
 IP = env.str("ip")
 
+LOGS_CHANNEL = env.str("LOGS_CHANNEL")
+
 FIRST_RO_TIME = 5
 SECOND_RO_TIME = 3 * 24 * 60
 
