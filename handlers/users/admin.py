@@ -14,7 +14,7 @@ from states.add_admin import AddAdmin
 @dp.message_handler(IsPrivate(), IsBotAdmin(), text="🔗Linkni o'chirish")
 async def delete_write_link(message: types.Message):
     await message.answer("ℹ️ Linkni o'chirish uchun linkning id sini quyidagi ko'rinishda botga yuboring:\n\n<code>/delete_link link_id</code>")
-     
+
 
 @dp.message_handler(IsPrivate(), IsBotAdmin(), text="➕Link qo'shish")
 async def add_write_link(message: types.Message):
@@ -33,9 +33,9 @@ async def show_write_link(message: types.Message):
 @dp.message_handler(IsPrivate(), IsBotAdmin(), text="👤Ban userlar")
 async def show_block_user(message: types.Message):
     data = await db.select_all_black_user_list()
-    text = 'Ban qilingan userlar:\n\n№| telegram id -> full name\n\n'
+    text = 'Ban qilingan userlar:\n\n№| telegram id | full name | group name\n\n'
     for ind, item in enumerate(data):
-        text += f"{ind+1}| <code>{item.get('telegram_id')}</code> -> {item.get('full_name')}\n"
+        text += f"{ind+1}| <code>{item.get('telegram_id')}</code> | {item.get('full_name')} | {item.get('group_name')}"
     await message.answer(text)
 
 
@@ -52,9 +52,9 @@ async def unban_block_user(message: types.Message):
 #     block_user = db.select_black_user(telegram_id=block_user_id)
 #     if not block_user_id:
 #         await message.answer("⚡Bu user ban olmagan!")
-#         return 
+#         return
 #     await message.chat.unban(user_id=block_user_id)
-#     await bot.unban_chat_member(chat_id=) 
+#     await bot.unban_chat_member(chat_id=)
 #     await db.delete_black_user(telegram_id=block_user_id)
 #     await message.answer(f"✅Foydalanuvchi {block_user.get('full_name')} bandan chiqarildi")
 
@@ -81,12 +81,12 @@ async def delete_write_link(message: types.Message):
     if not command_parse:
         await message.answer("❌ Yuborishda xatolik!")
         return
-    
+
     link_id = int((message.text).split(' ')[1])
     link = await db.select_write_link(id=link_id)
     if not link:
         await message.answer(f"❌ Bu id'ga ega bo'lgan link mavjud emas!")
-        return 
+        return
 
     await db.delete_write_link(link_id=link_id)
     await message.answer("✅ Link o'chirib yuborildi.")
@@ -98,13 +98,14 @@ async def add_admin(message: types.Message):
     await message.answer("➕ Qo'shmoqchi bo'lgan adminni telegram id sini kiriting:")
     await AddAdmin.admin_id.set()
 
+
 @dp.message_handler(IsPrivate(), IsBotAdmin(), state=AddAdmin.admin_id)
 async def add_admin(message: types.Message, state: FSMContext):
     if not (message.text).isdigit():
         await message.answer("❌ Yuborishda xatolik!")
         await state.finish()
-        return 
-    
+        return
+
     add_admin_id(telegram_id=message.text)
     try:
         await db.add_admin(telegram_id=int(message.text), full_name=message.from_user.full_name, created_at=dt.now())

@@ -56,10 +56,10 @@ class Database:
             telegram_id BIGINT NOT NULL UNIQUE,
             full_name VARCHAR(255) NOT NULL,
             count integer NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            created_at DATETIME NOT NULL DEFAULT NOW(),
             group_id BIGINT NULL,
             group_name VARCHAR(255) NULL,
-            ban_status BOOLEN DEFAULT FALSE
+            ban_status BOOLEAN DEFAULT FALSE
         )
         """
         await self.execute(sql, execute=True)
@@ -129,10 +129,10 @@ class Database:
 
     async def add_black_user(self, telegram_id, count, full_name, created_at, group_id, group_name, ban_status):
         sql = "INSERT INTO black_user_list (telegram_id, count, full_name, created_at, group_id, group_name, ban_status) VALUES($1, $2, $3, $4, $5, $6, $7) returning *"
-        return await self.execute(sql, telegram_id, count, full_name, created_at, fetchrow=True)
+        return await self.execute(sql, telegram_id, count, full_name, created_at, group_id, group_name, ban_status, fetchrow=True)
 
     async def select_all_black_user_list(self):
-        sql = "SELECT * FROM black_user_list"
+        sql = "SELECT * FROM black_user_list WHERE ban_status=True;"
         data = await self.execute(sql, fetch=True)
         return [
             {
@@ -151,7 +151,7 @@ class Database:
         return await self.execute(sql, telegram_id, execute=True)
 
     async def update_black_user_ban_status(self, telegram_id):
-        sql = "UPDATE black_user_list SET ban_status = True WHERE telegram_id=$1;"
+        sql = "UPDATE black_user_list SET ban_status=True WHERE telegram_id=$1;"
         return await self.execute(sql, telegram_id, execute=True)
 
     async def select_black_user(self, **kwargs):

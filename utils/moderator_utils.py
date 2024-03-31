@@ -2,6 +2,7 @@ import re
 import pytz
 import asyncio
 from datetime import datetime, timedelta
+
 from aiogram import types, utils
 
 from data.config import LOGS_CHANNEL
@@ -48,8 +49,7 @@ async def get_current_time():
     return datetime.now(tz=time_zone)
 
 
-async def user_read_only(message: types.Message, until_date: int, help_message: str):
-    member_id = message.from_user.id
+async def user_read_only(message: types.Message, until_date: int, help_message: str, member_id: int):
     now_time = await get_current_time()
     until_date = now_time + timedelta(minutes=until_date)
     try:
@@ -66,9 +66,12 @@ async def user_read_only(message: types.Message, until_date: int, help_message: 
 
 
 async def user_blocking(message: types.Message):
+    from loader import db
     user_id = message.from_user.id
     await message.chat.kick(user_id=user_id)
-    await send_message_to_logs_channel(user_id=user_id, help_text="ℹ️ ban berildi")
+    all_info_of_chat = message.chat
+    await send_message_to_logs_channel(user_id=user_id, help_text=f"ℹ️ ban berildi {all_info_of_chat}")
+    await db.update_black_user_ban_status(telegram_id=user_id)
     await message.delete()
     service_message = await message.answer(f"ℹ️ Foydalanuvchi {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhdan haydaldi.")
     await asyncio.sleep(12)
