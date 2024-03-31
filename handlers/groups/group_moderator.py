@@ -1,7 +1,7 @@
+import pytz
 import re
-import datetime
 import asyncio
-from datetime import datetime as dt
+from datetime import datetime
 
 from aiogram.dispatcher.filters import Command
 from aiogram import types
@@ -10,38 +10,24 @@ from aiogram.utils.exceptions import BadRequest
 from filters.is_admin import IsAdmin
 from loader import dp, db, bot
 from filters import IsGroup
-from data.config import ADMINS, FIRST_RO_TIME, SECOND_RO_TIME, LOGS_CHANNEL
-from utils.moderator_utils import get_urls, delete_some_link
+from data.config import ADMINS, FIRST_RO_TIME, SECOND_RO_TIME
+from utils.moderator_utils import get_urls, delete_some_link, send_message_to_logs_channel, user_read_only, user_blocking
 
 
-async def send_message_to_logs_channel(user_id, help_text):
-    await bot.send_message(chat_id=LOGS_CHANNEL, text=f"\nUser_id: {user_id}\nAdd inform: {help_text}")
-
-
-async def user_read_only(message: types.Message, until_date: int, help_message: str):
-    member_id = message.from_user.id
-    until_date = datetime.datetime.now() + datetime.timedelta(minutes=until_date)
-    try:
-        await message.delete()
-        await message.chat.restrict(user_id=member_id, can_send_messages=False, until_date=until_date)
-        await send_message_to_logs_channel(user_id=member_id, help_text=f"ℹ️ {until_date} ga ro ga o'tkazildi.")
-        service_message = await message.answer(text=help_message)
-        await asyncio.sleep(12)
-        await service_message.delete()
-
-    except BadRequest as err:
-        await send_message_to_logs_channel(user_id=member_id, help_text=f"❌ ro ga o'tkazish jarayonida, Xatolik! {err.args}")
-        return
-
-
-async def user_blocking(message: types.Message):
-    user_id = message.from_user.id
-    await message.chat.kick(user_id=user_id)
-    await send_message_to_logs_channel(user_id=user_id, help_text="ℹ️ ban berildi")
+@dp.message_handler(IsGroup(), content_types=types.ContentTypes.NEW_CHAT_MEMBERS)
+async def ban(message: types.Message):
     await message.delete()
-    service_message = await message.answer(f"ℹ️ Foydalanuvchi {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhdan haydaldi.")
+    text = f"""Assalomu alaykum {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>].\n<b>Himmat 700+</b> loyihasining muhokama guruhiga xush kelibsiz!"""
+    await send_message_to_logs_channel(user_id=message.from_user.id, help_text="ℹ️ guruhga yangi a'zo qo'shildi va xabar o'chirildi.")
+    service_message = await message.answer(text)
     await asyncio.sleep(12)
     await service_message.delete()
+
+
+@dp.message_handler(IsGroup(), content_types=types.ContentTypes.LEFT_CHAT_MEMBER)
+async def ban(message: types.Message):
+    await message.delete()
+    await send_message_to_logs_channel(user_id=message.from_user.id, help_text="ℹ️ guruhdan tark etdi va xabar o'chirildi.")
 
 
 @dp.message_handler(IsGroup(), Command("ro", prefixes="!/"), IsAdmin())
@@ -70,22 +56,6 @@ async def read_only_mode(message: types.Message):
     await asyncio.sleep(5)
     await message.delete()
     await service_message.delete()
-
-
-@dp.message_handler(IsGroup(), content_types=types.ContentTypes.NEW_CHAT_MEMBERS)
-async def ban(message: types.Message):
-    await message.delete()
-    text = f"""Assalomu alaykum {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>].\n<b>Himmat 700+</b> loyihasining muhokama guruhiga xush kelibsiz!"""
-    await send_message_to_logs_channel(user_id=message.from_user.id, help_text="ℹ️ guruhga yangi a'zo qo'shildi va xabar o'chirildi.")
-    service_message = await message.answer(text)
-    await asyncio.sleep(12)
-    await service_message.delete()
-
-
-@dp.message_handler(IsGroup(), content_types=types.ContentTypes.LEFT_CHAT_MEMBER)
-async def ban(message: types.Message):
-    await message.delete()
-    await send_message_to_logs_channel(user_id=message.from_user.id, help_text="ℹ️ guruhdan tark etdi va xabar o'chirildi.")
 
 
 @dp.message_handler(IsGroup(), Command("unban", prefixes="!/"), IsAdmin())
@@ -148,10 +118,10 @@ async def ban(message: types.Message):
     status = urls.intersection(write_links)
     if status:
         return
-
     black_user = await db.select_black_user(telegram_id=user_id)
     if not black_user:
-        now_date = dt.now()
+        time_zone = pytz.timezone("Asia/Tashkent")
+        now_date = datetime.now()
         await db.add_black_user(
             telegram_id=user_id,
             count=1,
