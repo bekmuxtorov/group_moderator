@@ -6,6 +6,7 @@ from asyncpg.pool import Pool
 
 from data import config
 
+
 class Database:
 
     def __init__(self):
@@ -55,7 +56,10 @@ class Database:
             telegram_id BIGINT NOT NULL UNIQUE,
             full_name VARCHAR(255) NOT NULL,
             count integer NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW() 
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            group_id BIGINT NULL,
+            group_name VARCHAR(255) NULL,
+            ban_status BOOLEN DEFAULT FALSE
         )
         """
         await self.execute(sql, execute=True)
@@ -81,7 +85,7 @@ class Database:
     async def add_admin(self, telegram_id, full_name, created_at):
         sql = "INSERT INTO admins (telegram_id, full_name, created_at) VALUES($1, $2, $3) returning *"
         return await self.execute(sql, telegram_id, full_name, created_at, fetchrow=True)
-        
+
     async def select_all_admin(self):
         sql = "SELECT * FROM admins"
         data = await self.execute(sql, fetch=True)
@@ -123,10 +127,10 @@ class Database:
     async def delete_write_link(self, link_id):
         await self.execute("DELETE FROM write_link_list WHERE id=$1", link_id, execute=True)
 
-    async def add_black_user(self, telegram_id, count, full_name, created_at):
-        sql = "INSERT INTO black_user_list (telegram_id, count, full_name, created_at) VALUES($1, $2, $3, $4) returning *"
+    async def add_black_user(self, telegram_id, count, full_name, created_at, group_id, group_name, ban_status):
+        sql = "INSERT INTO black_user_list (telegram_id, count, full_name, created_at, group_id, group_name, ban_status) VALUES($1, $2, $3, $4, $5, $6, $7) returning *"
         return await self.execute(sql, telegram_id, count, full_name, created_at, fetchrow=True)
-        
+
     async def select_all_black_user_list(self):
         sql = "SELECT * FROM black_user_list"
         data = await self.execute(sql, fetch=True)
@@ -135,12 +139,19 @@ class Database:
                 "telegram_id": item[0],
                 "full_name": item[1],
                 "count": item[2],
-                "created_at": item[3]
+                "created_at": item[3],
+                "group_id": item[4],
+                "group_name": item[5],
+                "ban_status": item[6]
             } for item in data
         ] if data else []
 
     async def update_black_user_count(self, telegram_id):
         sql = "UPDATE black_user_list SET count = count+1 WHERE telegram_id=$1;"
+        return await self.execute(sql, telegram_id, execute=True)
+
+    async def update_black_user_ban_status(self, telegram_id):
+        sql = "UPDATE black_user_list SET ban_status = True WHERE telegram_id=$1;"
         return await self.execute(sql, telegram_id, execute=True)
 
     async def select_black_user(self, **kwargs):
@@ -151,11 +162,16 @@ class Database:
             "telegram_id": data[0],
             "full_name": data[1],
             "count": data[2],
-            "created_at": data[3]
+            "created_at": data[3],
+            "group_id": data[4],
+            "group_name": data[5],
+            "ban_status": data[6]
         } if data else None
 
     async def delete_black_user(self, telegram_id):
         await self.execute("DELETE FROM black_user_list WHERE telegram_id=$1", telegram_id, execute=True)
+
+    # <==================== Keraksiz kod ====================>
 
     async def select_all_users(self):
         sql = "SELECT * FROM Users"
@@ -179,3 +195,5 @@ class Database:
 
     async def drop_users(self):
         await self.execute("DROP TABLE Users", execute=True)
+
+    # <==================== /Keraksiz kod ====================>
