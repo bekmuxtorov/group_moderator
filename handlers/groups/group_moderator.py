@@ -10,7 +10,7 @@ from aiogram.utils.exceptions import BadRequest
 from filters.is_admin import IsAdmin
 from loader import dp, db, bot
 from filters import IsGroup
-from data.config import ADMINS, FIRST_RO_TIME, SECOND_RO_TIME
+from data.config import ADMINS, FIRST_RO_TIME, SECOND_RO_TIME, LAST_RO_TIME
 from utils.moderator_utils import get_urls, delete_some_link, send_message_to_logs_channel, user_read_only, user_blocking
 
 
@@ -138,15 +138,16 @@ async def ban(message: types.Message):
     # Userning reklama jo'natgan xabarlarining soniga ko'ra, unga xukm beriladi!
     await send_message_to_logs_channel(user_id=user_id, help_text=f"ℹ️ {user_id}: {count}ta")
     if count == 1:
-        help_message = f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz 1/3 ogohlantirishga egasiz va {FIRST_RO_TIME} daqiqa guruhga yoza olmaysiz.\n\nKeyingi safar 3 kun guruhga yoza olmaysiz. Ehtiyot bo'ling!"
+        help_message = f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz 1/3 ogohlantirishga egasiz va {FIRST_RO_TIME} daqiqa guruhga yoza olmaysiz.\n\nKeyingi safar {SECOND_RO_TIME / (24 * 60)} kun guruhga yoza olmaysiz. Ehtiyot bo'ling!"
         await user_read_only(message=message, until_date=FIRST_RO_TIME, help_message=help_message)
         return
 
     elif count == 2:
-        help_message = f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz 2/3 ogohlantirishga egasiz va {SECOND_RO_TIME} daqiqa guruhga yoza olmaysiz.\n\nKeyingi safar guruhdan haydalasiz. Ehtiyot bo'ling!"
+        help_message = f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz 2/3 ogohlantirishga egasiz va {SECOND_RO_TIME / (24 * 60)} kun guruhga yoza olmaysiz.\n\nKeyingi safar {LAST_RO_TIME / (24 * 60)} kun guruhga yoza olmaysiz. Ehtiyot bo'ling!"
         await user_read_only(message=message, until_date=SECOND_RO_TIME, help_message=help_message)
         return
 
     else:
-        await user_blocking(message)
+        help_message = f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz 3/3 ogohlantirishga egasiz va {LAST_RO_TIME / (24 * 60)} kun guruhga yoza olmaysiz."
+        await user_read_only(message=message, until_date=LAST_RO_TIME, help_message=help_message)
         return
