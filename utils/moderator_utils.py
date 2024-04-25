@@ -48,12 +48,16 @@ async def get_current_time():
     return datetime.now(tz=time_zone)
 
 
-async def user_read_only(message: types.Message, until_date: int, help_message: str):
+async def user_read_only(message: types.Message, until_date: int, help_message: str, is_media_group: bool = False, album=None):
     member_id = message.from_user.id
     now_time = await get_current_time()
     until_date = now_time + timedelta(minutes=until_date)
     try:
-        await message.delete()
+        if is_media_group:
+            for obj in album:
+                await obj.delete()
+        else:
+            await message.delete()
         await message.chat.restrict(user_id=member_id, can_send_messages=False, until_date=until_date)
         await send_message_to_logs_channel(user_id=member_id, help_text=f"ℹ️ Hozirgi vaqt: {now_time.strftime('%Y-%m-%d %H:%M:%S %Z')}\n{until_date.strftime('%Y-%m-%d %H:%M:%S %Z')} gacha ro ga o'tkazildi.")
         service_message = await message.answer(text=help_message)
