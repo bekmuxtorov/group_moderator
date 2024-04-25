@@ -1,6 +1,7 @@
 import asyncio
 
 from aiogram import types, Dispatcher
+from typing import List, Union
 from aiogram.dispatcher import DEFAULT_RATE_LIMIT
 from aiogram.dispatcher.handler import CancelHandler, current_handler
 from aiogram.dispatcher.middlewares import BaseMiddleware
@@ -35,3 +36,31 @@ class ThrottlingMiddleware(BaseMiddleware):
     async def message_throttled(self, message: types.Message, throttled: Throttled):
         if throttled.exceeded_count <= 2:
             await message.reply("Too many requests!")
+
+
+class AlbumMiddleware(BaseMiddleware):
+    """This middleware is for capturing media groups."""
+
+    album_data: dict = {}
+
+    def __init__(self, latency: Union[int, float] = 0.01):
+        """
+        You can provide custom latency to make sure
+        albums are handled properly in highload.
+        """
+        self.latency = latency
+        super().__init__()
+
+    async def on_process_message(self, message: types.Message, data: dict):
+        if not message.media_group_id:
+            return
+
+        try:
+            self.album_data[message.media_group_id].append(message)
+            raise CancelHandler()  # Tell aiogram to cancel handler for this group element
+        except KeyError:
+            self.album_data[message.media_group_id] = [message]
+            await asyncio.sleep(self.latency)
+
+            message.conf["is_last"] = True
+            data["album"] = self.album_data[message.media_group_id]
