@@ -5,6 +5,7 @@ from datetime import datetime
 
 from aiogram.dispatcher.filters import Command
 from aiogram import types
+from typing import List, Union
 from aiogram.utils.exceptions import BadRequest
 
 from filters.is_admin import IsAdmin
@@ -86,18 +87,23 @@ async def unban(message: types.Message):
         await service_message.delete()
 
 
-@dp.message_handler(IsGroup(), content_types=types.ContentTypes.TEXT)
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.AUDIO)
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.VIDEO)
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.PHOTO)
+@dp.message_handler(IsGroup(), content_types=types.ContentTypes.TEXT)
 @dp.message_handler(IsGroup(), content_types=types.ContentTypes.DOCUMENT)
-async def ban(message: types.Message):
+@dp.message_handler(is_media_group=True, content_types=types.ContentType.ANY)
+async def ban(message: types.Message, album: List[types.Message] = None):
     member = await message.chat.get_member(message.from_user.id)
     if member.is_chat_admin():
         return
 
     if message.from_user.id in [int(item) for item in ADMINS]:
         return
+
+    is_media_group: bool = False
+    if message.media_group_id:
+        is_media_group = True
 
     text = message.html_text if message.html_text else message.md_text
     user_id = message.from_user.id
@@ -139,15 +145,15 @@ async def ban(message: types.Message):
     await send_message_to_logs_channel(user_id=user_id, help_text=f"ℹ️ {user_id}: {count}ta")
     if count == 1:
         help_message = f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz 1/3 ogohlantirishga egasiz va {FIRST_RO_TIME} daqiqa guruhga yoza olmaysiz.\n\nKeyingi safar {SECOND_RO_TIME / (24 * 60)} kun guruhga yoza olmaysiz. Ehtiyot bo'ling!"
-        await user_read_only(message=message, until_date=FIRST_RO_TIME, help_message=help_message)
+        await user_read_only(message=message, until_date=FIRST_RO_TIME, help_message=help_message, is_media_group=is_media_group, album=album)
         return
 
     elif count == 2:
         help_message = f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz 2/3 ogohlantirishga egasiz va {SECOND_RO_TIME / (24 * 60)} kun guruhga yoza olmaysiz.\n\nKeyingi safar {LAST_RO_TIME / (24 * 60)} kun guruhga yoza olmaysiz. Ehtiyot bo'ling!"
-        await user_read_only(message=message, until_date=SECOND_RO_TIME, help_message=help_message)
+        await user_read_only(message=message, until_date=SECOND_RO_TIME, help_message=help_message, is_media_group=is_media_group, album=album)
         return
 
     else:
         help_message = f"Xurmatli {message.from_user.full_name}[<a href=\'tg://user?id={message.from_user.id}\'>{message.from_user.id}</a>] guruhga reklama yuborish mumkin emas.\nSiz 3/3 ogohlantirishga egasiz va {LAST_RO_TIME / (24 * 60)} kun guruhga yoza olmaysiz."
-        await user_read_only(message=message, until_date=LAST_RO_TIME, help_message=help_message)
+        await user_read_only(message=message, until_date=LAST_RO_TIME, help_message=help_message, is_media_group=is_media_group, album=album)
         return
