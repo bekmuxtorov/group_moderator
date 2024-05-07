@@ -36,12 +36,10 @@ async def show_block_user(message: types.Message):
     text = 'Ban qilingan userlar:\n\n№| telegram id -> full name\n\n'
     for ind, item in enumerate(data):
         text += f"{ind+1}| <code>{item.get('telegram_id')}</code> -> {item.get('full_name')}\n"
-    
-    max_length = 4096
-    while len(text) > max_length:
-        part = text[:max_length]
-        text = text[max_length:]
-        await message.answer(part)
+        if (ind % 40 == 0) and (ind != 0):
+            await message.answer(text)
+            text = ''
+
     if text:
         await message.answer(text)
 
